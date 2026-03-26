@@ -39,7 +39,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 Clone the repo and build it:
 
 ```bash
-git clone https://github.com/yourusername/go-tui.git
+git clone https://github.com/rs-jensen/go-game-tui.git
 cd go-tui
 cargo build --release
 ```
