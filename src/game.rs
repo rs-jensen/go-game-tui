@@ -288,6 +288,76 @@ impl Game {
         }
     }
 
+    // Territory map: for each empty intersection, which player owns it (None = contested)
+    pub fn territory_map(&self) -> Vec<Vec<Option<Stone>>> {
+        let size = self.board.size;
+        let mut map = vec![vec![None::<Stone>; size]; size];
+        let mut visited = vec![vec![false; size]; size];
+
+        for r in 0..size {
+            for c in 0..size {
+                if self.board.get(r, c) == Stone::Empty && !visited[r][c] {
+                    let mut region = Vec::new();
+                    let mut borders = HashSet::new();
+                    let mut stack = vec![(r, c)];
+                    while let Some((cr, cc)) = stack.pop() {
+                        if visited[cr][cc] { continue; }
+                        visited[cr][cc] = true;
+                        region.push((cr, cc));
+                        for (nr, nc) in self.board.neighbors(cr, cc) {
+                            match self.board.get(nr, nc) {
+                                Stone::Empty => { if !visited[nr][nc] { stack.push((nr, nc)); } }
+                                s => { borders.insert(s); }
+                            }
+                        }
+                    }
+                    let owner = if borders.len() == 1 {
+                        borders.into_iter().next()
+                    } else {
+                        None
+                    };
+                    for pos in region {
+                        map[pos.0][pos.1] = owner;
+                    }
+                }
+            }
+        }
+        map
+    }
+
+    // Place handicap stones for Black at standard positions (call before game starts)
+    pub fn place_handicap(&mut self, n: u8) {
+        for &(r, c) in &self.handicap_positions(n) {
+            self.board.set(r, c, Stone::Black);
+        }
+        if n > 0 {
+            self.current = Stone::White; // White goes first after handicap
+        }
+    }
+
+    pub fn handicap_positions(&self, n: u8) -> Vec<(usize, usize)> {
+        // Standard positions indexed by stone count; order matters
+        let all: &[(usize, usize)] = match self.board.size {
+            19 => &[
+                (15, 3), (3, 15), (3, 3), (15, 15), // corners
+                (9, 9),                               // tengen
+                (9, 3), (9, 15),                     // sides
+                (15, 9), (3, 9),
+            ],
+            13 => &[
+                (9, 3), (3, 9), (3, 3), (9, 9),
+                (6, 6),
+                (6, 3), (6, 9),
+            ],
+            9 => &[
+                (6, 2), (2, 6), (2, 2), (6, 6),
+                (4, 4),
+            ],
+            _ => &[],
+        };
+        all.iter().take(n as usize).copied().collect()
+    }
+
     // Star points for visual reference on the board
     pub fn star_points(&self) -> Vec<(usize, usize)> {
         match self.board.size {
